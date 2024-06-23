@@ -1,0 +1,9 @@
+.vscode
+.idea
+*.xpi
+violentmonkey
+violentmonkey-amo
+dist
+node_modules
+.env
+result
