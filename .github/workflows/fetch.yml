@@ -1,0 +1,38 @@
+name: Check updates
+
+on:
+  push:
+      branches:
+        - 'master'
+  workflow_dispatch:
+  schedule:
+    - cron: "30 0,12 * * *"
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 'master'
+
+      - name: install nix
+        run: |
+          yes | sh <(curl -L https://nixos.org/nix/install) --no-daemon
+          mkdir -p ~/.config/nix
+          echo 'experimental-features = nix-command flakes' >> ~/.config/nix/nix.conf
+          set +x
+          echo "access-tokens = github.com=$GITHUB_ACCESS_TOKEN" >> ~/.config/nix/nix.conf
+        env:
+          GITHUB_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: fetch
+        run: |
+          . ~/.nix-profile/etc/profile.d/nix.sh
+
+          nix run .#info
+
+          if [ "$(git status --porcelain | wc -l)" -ne "0" ]; then
+            cat info.json
+            exit 1
+          fi
