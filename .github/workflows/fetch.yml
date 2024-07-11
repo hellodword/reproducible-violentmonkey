@@ -32,6 +32,8 @@ jobs:
 
           nix run .#info
 
+          echo -e '```json\n'"$(cat info.json)"'\n```' >> $GITHUB_STEP_SUMMARY
+
           if [ "$(git status --porcelain | wc -l)" -ne "0" ]; then
             cat info.json
             exit 1
