@@ -1,6 +1,7 @@
 {
   "link": "https://addons.mozilla.org/firefox/downloads/file/4315769/violentmonkey-2.20.0.xpi",
   "version": "2.20.0",
+  "fileHash": "sha256-lP6IUH6kfozFyoC3amquxEpIbb/VFaA/gvIo3CTUmRA=",
   "zipHash": "sha256-Yk+zk8sKaf8zCGaEA8qrcbi59y6BC4a8uI39K07lpDo=",
   "githubHash": "sha256-N9oicFKAbVK7cWaRbjh64rW9Cr1RwTG0kNIIAJ20oAU=",
   "yarnLockHash": "sha256-6PpZV8wjBf1fKoqpBKENVI1taTe3KCT/PXb4kSsxe3s="

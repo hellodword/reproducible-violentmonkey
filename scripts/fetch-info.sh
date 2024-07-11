@@ -16,6 +16,12 @@ if [ -z "$version" ]; then
   exit 1
 fi
 
+fileHash="$(nix hash to-sri --type sha256 "$(nix-prefetch-url "$link")")"
+if [ -z "$fileHash" ]; then
+  echo "failed to get AMO fileHash"
+  exit 1
+fi
+
 zipHash="$(nix-prefetch "{ fetchzip }: fetchzip { url = \"$link#test.zip\"; stripRoot = false;}")"
 if [ -z "$zipHash" ]; then
   echo "failed to get AMO zipHash"
@@ -40,10 +46,11 @@ if [ -z "$yarnLockHash" ]; then
   exit 1
 fi
 
-jq -n --arg link "$link" --arg version "$version" --arg zipHash "$zipHash" --arg githubHash "$githubHash" --arg yarnLockHash "$yarnLockHash" '
+jq -n --arg link "$link" --arg version "$version" --arg fileHash "$fileHash" --arg zipHash "$zipHash" --arg githubHash "$githubHash" --arg yarnLockHash "$yarnLockHash" '
 {
   "link": $link,
   "version": $version,
+  "fileHash": $fileHash,
   "zipHash": $zipHash,
   "githubHash": $githubHash,
   "yarnLockHash": $yarnLockHash
