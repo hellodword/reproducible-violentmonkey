@@ -1,0 +1,19 @@
+name: Verify
+
+on:
+  push:
+      branches:
+        - 'master'
+  workflow_dispatch:
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 'master'
+
+      - name: verify
+        run: |
+          docker build -t reproducible-violentmonkey .
