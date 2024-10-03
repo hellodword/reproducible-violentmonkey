@@ -8,6 +8,10 @@ on:
   schedule:
     - cron: "30 0,12 * * *"
 
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
   stale:
     runs-on: ubuntu-latest
@@ -15,6 +19,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: 'master'
+          fetch-depth: 0
 
       - name: install nix
         run: |
@@ -30,11 +35,31 @@ jobs:
         run: |
           . ~/.nix-profile/etc/profile.d/nix.sh
 
+          version_ori="$(jq -r '.version' info.json)"
+          if [ -z "$version_ori" ]; then
+            echo version_ori
+            exit 1
+          fi
+
           nix run .#info
 
           echo -e '```json\n'"$(cat info.json)"'\n```' >> $GITHUB_STEP_SUMMARY
 
-          if [ "$(git status --porcelain | wc -l)" -ne "0" ]; then
-            cat info.json
+          version_new="$(jq -r '.version' info.json)"
+          if [ -z "$version_new" ]; then
+            echo version_new
             exit 1
           fi
+
+          # if [ "$(git status --porcelain | wc -l)" -ne "0" ]; then
+          if [ "$version_new" != "$version_ori" ]; then
+            git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git config --local user.name "github-actions[bot]"
+            git add info.json
+            git commit -m "chore: [bot] $version_ori -> $version_new"
+            git checkout -b "automated/${version_ori}_to_${version_new}"
+            git push -f origin "automated/${version_ori}_to_${version_new}"
+            gh pr create --fill
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
