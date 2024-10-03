@@ -1,8 +1,8 @@
 {
-  "link": "https://addons.mozilla.org/firefox/downloads/file/4358157/violentmonkey-2.25.0.xpi",
-  "version": "2.25.0",
-  "fileHash": "sha256-9kZuddAcHdQjIDADZrxQHM19KqWvzvruo3pU6tyAEtQ=",
-  "zipHash": "sha256-XVdTNIlrnLZdhnd3tiFpS09CaUWlvmtmD0Giex01tjs=",
-  "githubHash": "sha256-1inrbkT+I6mJ7Kp5y72uIv95z/2kWLLs1UfldtjHUQc=",
-  "yarnLockHash": "sha256-xyIis7Mh0IU78uxaPcPU7bxw6N9wixmWrUxLHmFTN2I="
+  "link": "https://addons.mozilla.org/firefox/downloads/file/4362578/violentmonkey-2.26.0.xpi",
+  "version": "2.26.0",
+  "fileHash": "sha256-R7Yf1GNgKji/Z1kauUxg0/GgKtT4G5qKPel9VGGy4S4=",
+  "zipHash": "sha256-ED7yaovscnMbGQVZ/2w/7KHVXGYUu5kp48DG+IVGRW8=",
+  "githubHash": "sha256-uHkOOYCZoE0LPeuGzshUmUyaw3jz8qNNYBTAaukQe9o=",
+  "yarnLockHash": "sha256-hLwomWizuMNsZyp9HOvTUU3EZQRbh219FJ8ZsXlhIQ0="
 }
