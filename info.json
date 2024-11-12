@@ -4,5 +4,6 @@
   "fileHash": "sha256-MLw9sUGUpRl+RyHUGRI/OgK5xvPpRkZySqmRE3EhvLo=",
   "zipHash": "sha256-9HNgCX/ZrpzPUiQOJbF44ySTM2QB/UizH8YbcvMh5EM=",
   "githubHash": "sha256-/1DqJ4MumLnLKJBIYt5cv9Stbe5YRWkFWYY8ZfkN21s=",
-  "yarnLockHash": "sha256-kg4eWR+enS1J3XoCHl8tV8Mk4FSkNszLm0TgVFyD2R0="
+  "yarnLockHash": "sha256-kg4eWR+enS1J3XoCHl8tV8Mk4FSkNszLm0TgVFyD2R0=",
+  "nodeHeadersHash": "sha256:0q7ni09d973mwlza19b6rzipb7nn2lchx8gdrgiw0kkxvndd7h6p"
 }

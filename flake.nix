@@ -56,7 +56,7 @@
               nodeHeaders = builtins.fetchTarball {
                 name = "node-headers-${node.version}";
                 url = "https://nodejs.org/download/release/v${node.version}/node-v${node.version}-headers.tar.gz";
-                sha256 = "0j07wcw4bika0s4pb07rnicpmqsdfiv43n0rdsknz9p15wqd6p9c";
+                sha256 = info.nodeHeadersHash;
               };
             in
             mkYarnPackage rec  {
@@ -140,6 +140,12 @@
               name = "exe";
               runtimeInputs = [ pkgs.nix-prefetch ];
               text = builtins.readFile ./scripts/fetch-info.sh;
+              excludeShellChecks = [
+                "SC2181"
+                "SC2207"
+                "SC2005"
+                "SC2034"
+              ];
             };
           in
           {
