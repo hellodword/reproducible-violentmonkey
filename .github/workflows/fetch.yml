@@ -59,7 +59,8 @@ jobs:
             git commit -m "chore: [bot] $version_ori -> $version_new"
             git checkout -b "automated/${version_ori}_to_${version_new}"
             git push -f origin "automated/${version_ori}_to_${version_new}"
-            gh pr create --fill
+            PR_URL="$(gh pr create --fill)"
+            gh pr merge "$PR_URL" --delete-branch --rebase
           fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
