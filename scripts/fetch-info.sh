@@ -20,7 +20,7 @@ update_hash() {
             exit 1
         fi
         echo "$pkg" upgrading "${hashes[0]}" to "${hashes[1]}"
-        find "$base" -type f -name "*.json" -exec sed -i "s@${hashes[0]}@${hashes[1]}@" {} \;
+        sed -i "s@${hashes[0]}@${hashes[1]}@" info.json
     done
 }
 
@@ -44,4 +44,6 @@ fi
 echo "version $version"
 echo "$(jq --arg version "$version" '.version = $version' info.json)" > info.json
 
+update_hash violentmonkey-file violentmonkey/violentmonkey .
+# update_hash violentmonkey-amo violentmonkey/violentmonkey .
 # update_hash violentmonkey violentmonkey/violentmonkey .

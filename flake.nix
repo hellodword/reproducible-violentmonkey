@@ -12,11 +12,27 @@
     in
     {
       overlays.default = final: prev: {
-        inherit (self.packages.${prev.system}) violentmonkey-amo violentmonkey;
+        inherit (self.packages.${prev.system}) violentmonkey-amo violentmonkey-file violentmonkey;
       };
 
       packages = forEachSupportedSystem
         ({ pkgs }: with pkgs; rec {
+          violentmonkey-file = stdenv.mkDerivation rec {
+            pname = "violentmonkey-file";
+            version = info.version;
+
+            src = pkgs.fetchurl {
+              url = info.link;
+              sha256 = info.fileHash;
+            };
+
+            phases = [ "installPhase" ];
+            installPhase = ''
+              mkdir -p $out
+              cp $src $out
+            '';
+          };
+
           violentmonkey-amo = stdenv.mkDerivation rec {
             pname = "violentmonkey-amo";
             version = info.version;
