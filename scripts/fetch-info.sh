@@ -24,9 +24,9 @@ update_hash() {
     done
 }
 
-link="$(curl -fsSL "https://addons.mozilla.org/en-US/firefox/addon/violentmonkey" | \
-  grep -oP '(?<=")https://addons.mozilla.org/firefox/downloads/file/\d+/[^"\s]+\.xpi(?=")')"
 
+body="$(curl -fsSL 'https://addons.mozilla.org/api/v5/addons/addon/violentmonkey/versions/?page=1&lang=en-US')"
+link="$(echo "$body" | jq -r '.results[0].file.url')"
 if [ -z "$link" ]; then
   echo "failed to get AMO link"
   exit 1
@@ -35,7 +35,7 @@ fi
 echo "link $link"
 echo "$(jq --arg link "$link" '.link = $link' info.json)" > info.json
 
-version="$(echo "$link" | grep -oP "(?<=violentmonkey-)[\d\.]+(?=\.xpi$)")"
+version="$(echo "$body" | jq -r '.results[0].version')"
 if [ -z "$version" ]; then
   echo "failed to get AMO version"
   exit 1
