@@ -2,172 +2,113 @@
   description = "reproducible-violentmonkey";
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
-  outputs = { self, nixpkgs, ... }:
+  outputs = { nixpkgs, ... }:
     let
       supportedSystems = [ "x86_64-linux" ];
-      forEachSupportedSystem = f: nixpkgs.lib.genAttrs supportedSystems (system: f {
-        pkgs = import nixpkgs { inherit system; overlays = [ self.overlays.default ]; };
-      });
-      info = builtins.fromJSON (builtins.readFile ./info.json);
+      forEachSupportedSystem =
+        f:
+        nixpkgs.lib.genAttrs supportedSystems (
+          system:
+          f {
+            inherit system;
+            pkgs = import nixpkgs { inherit system; };
+          }
+        );
     in
     {
-      overlays.default = final: prev: {
-        inherit (self.packages.${prev.system}) violentmonkey-amo violentmonkey-file violentmonkey;
-      };
-
-      packages = forEachSupportedSystem
-        ({ pkgs }: with pkgs; rec {
-          violentmonkey-file = stdenv.mkDerivation rec {
-            pname = "violentmonkey-file";
-            version = info.version;
-
-            src = pkgs.fetchurl {
-              url = info.link;
-              sha256 = info.fileHash;
-            };
-
-            phases = [ "installPhase" ];
-            installPhase = ''
-              mkdir -p $out
-              cp $src $out
-            '';
-          };
-
-          violentmonkey-amo = stdenv.mkDerivation rec {
-            pname = "violentmonkey-amo";
-            version = info.version;
-
-            src = fetchzip rec {
-              name = "violentmonkey-${info.version}.xpi.zip";
-              # https://github.com/NixOS/nixpkgs/issues/60157#issuecomment-524965720
-              url = "${info.link}#${name}";
-              hash = info.zipHash;
-              stripRoot = false;
-            };
-
-            dontPatch = true;
-            dontConfigure = true;
-            dontBuild = true;
-            doCheck = false;
-            dontFixup = true;
-
-            installPhase = ''
-              runHook preInstall
-
-              # provided by Mozilla
-              rm -rf META-INF
-              mkdir -p $out/share
-              rm -rf $out/share/dist
-              cp -r . $out/share/dist
-
-              runHook postInstall
-            '';
-          };
-
-          violentmonkey =
+      apps = forEachSupportedSystem (
+        { pkgs, system }:
+        let
+          repoRoot = ''
+            repo_root="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+          '';
+          updateEnv = ''
+            export REPRODUCIBLE_VIOLENTMONKEY_ROOT="$repo_root"
+            export REPRODUCIBLE_VIOLENTMONKEY_NIXPKGS="${nixpkgs.outPath}"
+          '';
+          latest =
             let
-              pname = "violentmonkey";
-              version = info.version;
-              node = nodejs_20;
-              nodeHeaders = builtins.fetchTarball {
-                name = "node-headers-${node.version}";
-                url = "https://nodejs.org/download/release/v${node.version}/node-v${node.version}-headers.tar.gz";
-                sha256 = info.nodeHeadersHash;
+              program = pkgs.writeShellApplication {
+                name = "violentmonkey-latest";
+                runtimeInputs = with pkgs; [
+                  git
+                  python3
+                ];
+                text = ''
+                  ${repoRoot}
+                  ${updateEnv}
+                  python3 ${./scripts/update-release.py} --print-latest-version
+                '';
               };
             in
-            mkYarnPackage rec  {
-              inherit pname version;
-              nodejs = node;
-
-              src = fetchFromGitHub {
-                owner = "violentmonkey";
-                repo = "violentmonkey";
-                rev = "v${info.version}";
-                hash = info.githubHash;
-              };
-
-              packageJSON = "${src}/package.json";
-              yarnLock = "${src}/yarn.lock";
-
-              offlineCache = fetchYarnDeps {
-                yarnLock = "${src}/yarn.lock";
-                hash = info.yarnLockHash;
-              };
-
-              pkgConfig = {
-                sharp = {
-                  nativeBuildInputs = builtins.attrValues {
-                    inherit (pkgs.nodePackages) node-gyp;
-                    inherit (pkgs) python3 pkg-config;
-                  };
-                  buildInputs = [ pkgs.vips.dev ];
-                  postInstall = "node-gyp --node-dir=${nodeHeaders} rebuild";
-                };
-              };
-
-              distPhase = "true";
-              ignoreScripts = false;
-
-              postBuild = ''
-                pushd deps/${pname}
-
-                cat ${./violentmonkey.env} | base64 -d > .env
-    
-                rm -rf node_modules
-                ln -s ../../node_modules node_modules
-                yarn --offline run build
-
-                popd
-              '';
-
-              installPhase = ''
-                runHook preInstall
-
-                rm -rf $out/*
-                mkdir -p $out/share
-                rm -rf $out/share/dist
-                cp -r deps/${pname}/dist $out/share/dist
-
-                runHook postInstall
-              '';
+            {
+              type = "app";
+              program = "${nixpkgs.lib.getExe program}";
+              meta.description = "Print the latest Violentmonkey version on AMO.";
             };
-        });
+          update =
+            let
+              program = pkgs.writeShellApplication {
+                name = "violentmonkey-update";
+                runtimeInputs = with pkgs; [
+                  git
+                  nix
+                  python3
+                ];
+                text = ''
+                  if [ "$#" -ne 1 ]; then
+                    echo "usage: nix run .#update -- <version>" >&2
+                    exit 2
+                  fi
 
-      apps = forEachSupportedSystem ({ pkgs }: rec {
-        default = diff;
-        diff =
-          let
-            program = pkgs.writeShellApplication {
-              name = "exe";
-              runtimeInputs = with pkgs; [ diffutils ];
-              text = ''
-                diff -rq "${pkgs.violentmonkey}/share/dist" "${pkgs.violentmonkey-amo}/share/dist"
-              '';
+                  ${repoRoot}
+                  ${updateEnv}
+                  python3 ${./scripts/update-release.py} "$1"
+                '';
+              };
+            in
+            {
+              type = "app";
+              program = "${nixpkgs.lib.getExe program}";
+              meta.description = "Update recorded Violentmonkey release metadata for an explicit version.";
             };
-          in
-          {
-            type = "app";
-            program = "${nixpkgs.lib.getExe program}";
-          };
+          verify =
+            let
+              program = pkgs.writeShellApplication {
+                name = "violentmonkey-verify";
+                runtimeInputs = with pkgs; [
+                  git
+                  nix
+                ];
+                text = ''
+                  if [ "$#" -ne 1 ]; then
+                    echo "usage: nix run .#verify -- <version>" >&2
+                    exit 2
+                  fi
+                  if [ "$1" = latest ]; then
+                    echo "verify requires an explicit version; use nix run .#latest to inspect the latest version" >&2
+                    exit 2
+                  fi
 
-        info =
-          let
-            program = pkgs.writeShellApplication {
-              name = "exe";
-              runtimeInputs = [ pkgs.nix-prefetch ];
-              text = builtins.readFile ./scripts/fetch-info.sh;
-              excludeShellChecks = [
-                "SC2181"
-                "SC2207"
-                "SC2005"
-                "SC2034"
-              ];
+                  ${repoRoot}
+                  nix-build --no-out-link ${./.}/nix/verify-release.nix \
+                    --argstr root "$repo_root" \
+                    --argstr version "$1" \
+                    --argstr system "${system}" \
+                    --arg nixpkgsPath ${nixpkgs.outPath}
+                '';
+              };
+            in
+            {
+              type = "app";
+              program = "${nixpkgs.lib.getExe program}";
+              meta.description = "Verify a recorded Violentmonkey release against the AMO artifact.";
             };
-          in
-          {
-            type = "app";
-            program = "${nixpkgs.lib.getExe program}";
-          };
-      });
+        in
+        {
+          default = latest;
+          inherit latest update verify;
+        }
+      );
     };
 }

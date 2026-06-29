@@ -1,0 +1,21 @@
+{
+  "source": "pre-existing repository violentmonkey.env decoded during metadata migration, corrected against the published release bundle",
+  "sourceFormat": "base64-encoded env file plus published background/index.js literals",
+  "reason": "Violentmonkey release workflow injects SYNC_* values into the build environment, and writes them to .env only for the release source zip.",
+  "publicness": "These values are treated as public release inputs because they are recoverable from the published extension.",
+  "corrections": [
+    {
+      "key": "SYNC_ONEDRIVE_CLIENT_ID",
+      "oldValue": "000000004418358A",
+      "newValue": "59c6059c-8231-49ec-809b-a307e384f6b6",
+      "source": "published AMO and GitHub release background/index.js"
+    }
+  ],
+  "requiredKeys": [
+    "SYNC_DROPBOX_CLIENT_ID",
+    "SYNC_GOOGLE_DESKTOP_ID",
+    "SYNC_GOOGLE_DESKTOP_SECRET",
+    "SYNC_ONEDRIVE_CLIENT_ID",
+    "SYNC_ONEDRIVE_CLIENT_SECRET"
+  ]
+}

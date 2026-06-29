@@ -1,0 +1,75 @@
+{
+  "project": "violentmonkey",
+  "version": "2.41.0",
+  "amo": {
+    "addon": "violentmonkey",
+    "fileUrl": "https://addons.mozilla.org/firefox/downloads/file/4830363/violentmonkey-2.41.0.xpi",
+    "xpiSha256": "sha256-QtGEeIvS9qKRlW3THNRdqntKXRsZvxx0+wrnbkVvo2s=",
+    "fetchzipSha256": "sha256-syjaOQFfTTFiwFUOARzck4zGiFWcrkVaCf3+hzvTn4k=",
+    "unsignedTreeSha256": "sha256-LP1pJE43FHFPo0/KV6Fm+TzXY2x5WQ/1txcORiHufnE=",
+    "strip": [
+      "META-INF"
+    ]
+  },
+  "upstream": {
+    "owner": "violentmonkey",
+    "repo": "violentmonkey",
+    "tag": "v2.41.0",
+    "tagRev": "e1ab063b57529cc69a367941d920102c94bfac72",
+    "rev": "598ce3588f416306a5728dba0090d10d8f7bb4f8",
+    "sourceSha256": "sha256-6up5MzHilrkgnv0HdIZAmMYGFYAD85yXzgVji1sfwYg=",
+    "releaseWorkflow": ".github/workflows/release.yml",
+    "releaseWorkflowRun": {
+      "id": 26722519839,
+      "event": "workflow_dispatch",
+      "headBranch": "release",
+      "headSha": "598ce3588f416306a5728dba0090d10d8f7bb4f8",
+      "createdAt": "2026-05-31T19:40:22Z",
+      "completedAt": "2026-05-31T19:41:48Z",
+      "releaseAssetSha256": "sha256-O7WFEz3DqE4cGcbouzynOg110UygIbQ+MhJWikImmyY="
+    }
+  },
+  "toolchain": {
+    "node": {
+      "declared": ">= 24",
+      "resolvedVersion": "24.16.0",
+      "resolutionSource": "nixpkgs nodejs_24"
+    },
+    "packageManager": {
+      "name": "pnpm",
+      "declared": "pnpm@10.34.1+sha512.b58fbde6dca66a929538021581f648b4570b6ca19b18e7cbd7f2c07a7b24454155388dacdf08f2af3678e88a6d1fe04f9d609df24bf51735a060ea041b374ab7",
+      "nixPackage": "pnpm_10 override",
+      "nixVersion": "10.34.1",
+      "tarballSha256": "sha256-tWi8XuK2ipc1dDwbnwmz0wZd5kvvrxhsXQGy8ITRbMA="
+    },
+    "nixpkgs": {
+      "rev": "e73de5be04e0eff4190a1432b946d469c794e7b4",
+      "narHash": "sha256-pGvFkM8N0xEkIIXDe5YYfbEAvHrk4IxBrjB/x8OomhE="
+    }
+  },
+  "dependencies": {
+    "lockFile": "pnpm-lock.yaml",
+    "pnpmDepsSha256": "sha256-iK17uAeGLbIvO1nLaelGnYG1/hkSeGaMjkl8tA0+iKo=",
+    "fetcherVersion": 4,
+    "sharpPolicy": "use-upstream-prebuilt-img-packages"
+  },
+  "buildEnv": {
+    "file": "build.env",
+    "provenance": "build-env.provenance.json",
+    "requiredKeys": [
+      "SYNC_DROPBOX_CLIENT_ID",
+      "SYNC_GOOGLE_DESKTOP_ID",
+      "SYNC_GOOGLE_DESKTOP_SECRET",
+      "SYNC_ONEDRIVE_CLIENT_ID",
+      "SYNC_ONEDRIVE_CLIENT_SECRET"
+    ]
+  },
+  "comparison": {
+    "mode": "recursive-file-byte-comparison",
+    "root": "dist",
+    "ignore": [
+      "META-INF"
+    ],
+    "manifestAlgorithm": "sha256 over sorted relative file paths"
+  }
+}
