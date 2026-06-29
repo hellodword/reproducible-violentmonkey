@@ -2,8 +2,8 @@ name: Check updates
 
 on:
   push:
-      branches:
-        - 'master'
+    branches:
+      - 'master'
   workflow_dispatch:
   schedule:
     - cron: "30 0,12 * * *"
@@ -13,54 +13,92 @@ permissions:
   pull-requests: write
 
 jobs:
-  stale:
+  update:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: 'master'
           fetch-depth: 0
 
-      - name: install nix
+      - name: Install Nix with official installer
+        shell: bash
         run: |
-          yes | sh <(curl -L https://nixos.org/nix/install) --no-daemon
-          mkdir -p ~/.config/nix
-          echo 'experimental-features = nix-command flakes' >> ~/.config/nix/nix.conf
-          set +x
-          echo "access-tokens = github.com=$GITHUB_ACCESS_TOKEN" >> ~/.config/nix/nix.conf
+          set -euxo pipefail
+
+          sudo apt-get update
+          sudo apt-get install -y xz-utils
+
+          curl -L https://nixos.org/nix/install | sh -s -- --daemon
+
+          echo "/nix/var/nix/profiles/default/bin" >> "$GITHUB_PATH"
+          echo "NIX_REMOTE=daemon" >> "$GITHUB_ENV"
+
+          . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
+
+          nix --version
+
+      - name: Configure Nix
+        shell: bash
         env:
           GITHUB_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euxo pipefail
+
+          sudo sed -i \
+            -e '/^experimental-features[[:space:]]*=/d' \
+            -e '/^max-jobs[[:space:]]*=/d' \
+            -e '/^trusted-users[[:space:]]*=/d' \
+            -e '/^access-tokens[[:space:]]*=/d' \
+            /etc/nix/nix.conf
+
+          printf '%s\n' \
+            "experimental-features = nix-command flakes" \
+            "max-jobs = auto" \
+            "trusted-users = root ${USER}" \
+            "access-tokens = github.com=$GITHUB_ACCESS_TOKEN" \
+            | sudo tee -a /etc/nix/nix.conf
+
+          sudo systemctl restart nix-daemon
+
+          nix config show experimental-features
+          nix config show substituters
 
       - name: fetch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          . ~/.nix-profile/etc/profile.d/nix.sh
+          set -euo pipefail
 
-          version_ori="$(jq -r '.version' info.json)"
+          version_ori="$(find releases/violentmonkey -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort -V | tail -n1)"
           if [ -z "$version_ori" ]; then
-            echo version_ori
+            echo "failed to detect recorded version" >&2
             exit 1
           fi
 
-          nix run .#info
-
-          echo -e '```json\n'"$(cat info.json)"'\n```' >> $GITHUB_STEP_SUMMARY
-
-          version_new="$(jq -r '.version' info.json)"
+          version_new="$(nix run .#latest | tail -n1)"
           if [ -z "$version_new" ]; then
-            echo version_new
+            echo "failed to detect latest version" >&2
             exit 1
           fi
 
-          # if [ "$(git status --porcelain | wc -l)" -ne "0" ]; then
+          echo "recorded version: $version_ori" >> "$GITHUB_STEP_SUMMARY"
+          echo "latest version: $version_new" >> "$GITHUB_STEP_SUMMARY"
+
+          nix run .#update -- "$version_new"
+          nix run .#verify -- "$version_new"
+
           if [ "$version_new" != "$version_ori" ]; then
+            echo '```json' >> "$GITHUB_STEP_SUMMARY"
+            cat "releases/violentmonkey/$version_new/release.json" >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+
             git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git config --local user.name "github-actions[bot]"
-            git add info.json
+            git add "releases/violentmonkey/$version_new"
             git commit -m "chore: [bot] $version_ori -> $version_new"
             git checkout -b "automated/${version_ori}_to_${version_new}"
             git push -f origin "automated/${version_ori}_to_${version_new}"
             PR_URL="$(gh pr create --fill)"
             gh pr merge "$PR_URL" --delete-branch --rebase
           fi
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
