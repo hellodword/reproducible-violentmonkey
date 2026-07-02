@@ -4,6 +4,12 @@
 
   outputs = { nixpkgs, ... }:
     let
+      latestRelease = builtins.fromJSON (builtins.readFile ./releases/violentmonkey/2.41.0/release.json);
+      violentmonkeyXpi = {
+        inherit (latestRelease) version;
+        url = latestRelease.amo.fileUrl;
+        sha256 = latestRelease.amo.xpiSha256;
+      };
       supportedSystems = [ "x86_64-linux" ];
       forEachSupportedSystem =
         f:
@@ -16,6 +22,14 @@
         );
     in
     {
+      lib = {
+        inherit violentmonkeyXpi;
+        violentmonkeyBuildFirefoxXpiAddonArgs = violentmonkeyXpi // {
+          pname = "violentmonkey";
+          addonId = "{aecec67f-0d10-4fa7-b7c7-609a2db280cf}";
+        };
+      };
+
       apps = forEachSupportedSystem (
         { pkgs, system }:
         let
