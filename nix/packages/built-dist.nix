@@ -1,12 +1,13 @@
 {
+  amoDist,
   diffutils,
   fetchPnpmDeps,
   lib,
   nodejs_24,
   pnpm_10,
   pnpmConfigHook,
+  python3,
   release,
-  releaseDir,
   stdenv,
   upstreamSrc,
 }:
@@ -50,6 +51,7 @@ stdenv.mkDerivation (finalAttrs: {
     nodejs
     pnpm
     pnpmConfigHook
+    python3
   ];
 
   buildInputs = [ stdenv.cc.cc.lib ];
@@ -62,19 +64,22 @@ stdenv.mkDerivation (finalAttrs: {
   buildPhase = ''
     runHook preBuild
 
-    set -a
-    . ${releaseDir}/build.env
-    set +a
+    run_with_release_env() {
+      python3 ${../../scripts/run-with-release-env.py} \
+        --workflow ${lib.escapeShellArg "${upstreamSrc}/${release.upstream.releaseWorkflow}"} \
+        --bundle ${lib.escapeShellArg "${amoDist}/share/dist/background/index.js"} \
+        -- "$@"
+    }
 
     node - <<'JS' > sharp-versions.json
     const sharp = require('sharp');
     console.log(JSON.stringify(sharp.versions, null, 2));
     JS
 
-    pnpm build
+    run_with_release_env pnpm build
 
     mv dist dist.first
-    pnpm build
+    run_with_release_env pnpm build
     diff -qr dist dist.first
     rm -rf dist.first
 

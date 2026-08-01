@@ -10,8 +10,6 @@ let
   rootPath = /. + root;
   releaseDir = rootPath + "/releases/violentmonkey/${version}";
   releaseJsonPath = releaseDir + "/release.json";
-  buildEnvPath = releaseDir + "/build.env";
-  buildEnvProvenancePath = releaseDir + "/build-env.provenance.json";
   missingMetadataMessage = ''
     release metadata for Violentmonkey ${version} is missing.
     Run: nix run .#update -- ${version}
@@ -24,16 +22,8 @@ let
   releaseInfo =
     if releaseJson.version != version then
       throw "release metadata version mismatch: requested ${version}, found ${releaseJson.version}"
-    else if !(builtins.pathExists buildEnvPath) then
-      throw missingMetadataMessage
-    else if !(builtins.pathExists buildEnvProvenancePath) then
-      throw missingMetadataMessage
     else
-      releaseJson
-      // {
-        buildEnvText = builtins.readFile buildEnvPath;
-        buildEnvProvenance = builtins.fromJSON (builtins.readFile buildEnvProvenancePath);
-      };
+      releaseJson;
   upstreamSrc = pkgs.callPackage ./packages/upstream-src.nix {
     release = releaseInfo;
   };
@@ -67,7 +57,7 @@ let
   };
   builtDist = pkgs.callPackage ./packages/built-dist.nix {
     release = releaseInfo;
-    inherit releaseDir upstreamSrc;
+    inherit amoDist upstreamSrc;
   };
 in
 pkgs.callPackage ./packages/compare.nix {

@@ -1,0 +1,61 @@
+{
+  "project": "violentmonkey",
+  "version": "2.46.0",
+  "amo": {
+    "strip": [
+      "META-INF"
+    ],
+    "addon": "violentmonkey",
+    "fileUrl": "https://addons.mozilla.org/firefox/downloads/file/4926076/violentmonkey-2.46.0.xpi",
+    "xpiSha256": "sha256-xpUlE9d5EayfcXz7Mv5jYo5L7THvlrEv+pLgnjM+Mf8=",
+    "fetchzipSha256": "sha256-N8a7oJ65NSFapNxV4cVRZ/TbcTRB6iZWdYEBQfmgDG0=",
+    "unsignedTreeSha256": "sha256-fhNmiGz9bIK0gycvUJHA/Ta6Ked7n33jMOXWyJwnQJg="
+  },
+  "upstream": {
+    "owner": "violentmonkey",
+    "repo": "violentmonkey",
+    "tag": "v2.46.0",
+    "tagRev": "66c6414044a3d8ca794a51a24efe52937e5ec4fb",
+    "rev": "66c6414044a3d8ca794a51a24efe52937e5ec4fb",
+    "sourceSha256": "sha256-bJ0MQwO73HBH9A86sSnVdUdoeZiWkJOr5VJl/P0jabE=",
+    "releaseWorkflow": ".github/workflows/release.yml",
+    "releaseWorkflowRun": {
+      "id": 30439463542,
+      "event": "push",
+      "headBranch": "v2.46.0",
+      "headSha": "66c6414044a3d8ca794a51a24efe52937e5ec4fb",
+      "createdAt": "2026-07-29T09:23:51Z",
+      "completedAt": "2026-07-29T09:25:26Z",
+      "releaseAssetSha256": "sha256-ZHS2q5KtCJ3WLMZbXRJw2vGtmq6eobFFnkdmjBkgOw4="
+    }
+  },
+  "toolchain": {
+    "node": {
+      "declared": ">= 24",
+      "resolvedVersion": "24.16.0",
+      "resolutionSource": "nixpkgs nodejs_24"
+    },
+    "packageManager": {
+      "name": "pnpm",
+      "declared": "pnpm@10.34.1+sha512.b58fbde6dca66a929538021581f648b4570b6ca19b18e7cbd7f2c07a7b24454155388dacdf08f2af3678e88a6d1fe04f9d609df24bf51735a060ea041b374ab7",
+      "nixPackage": "pnpm_10 override",
+      "nixVersion": "10.34.1",
+      "tarballSha256": "sha256-tWi8XuK2ipc1dDwbnwmz0wZd5kvvrxhsXQGy8ITRbMA="
+    },
+    "nixpkgs": {}
+  },
+  "dependencies": {
+    "lockFile": "pnpm-lock.yaml",
+    "pnpmDepsSha256": "sha256-pE/tJuSn4JgHLbVMCn4Whq18SCQDaoOIYsaHOLlAlEQ=",
+    "fetcherVersion": 4,
+    "sharpPolicy": "use-upstream-prebuilt-img-packages"
+  },
+  "comparison": {
+    "mode": "recursive-file-byte-comparison",
+    "root": "dist",
+    "ignore": [
+      "META-INF"
+    ],
+    "manifestAlgorithm": "sha256 over sorted relative file paths"
+  }
+}

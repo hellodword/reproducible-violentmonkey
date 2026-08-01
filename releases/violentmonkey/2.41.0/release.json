@@ -53,17 +53,6 @@
     "fetcherVersion": 4,
     "sharpPolicy": "use-upstream-prebuilt-img-packages"
   },
-  "buildEnv": {
-    "file": "build.env",
-    "provenance": "build-env.provenance.json",
-    "requiredKeys": [
-      "SYNC_DROPBOX_CLIENT_ID",
-      "SYNC_GOOGLE_DESKTOP_ID",
-      "SYNC_GOOGLE_DESKTOP_SECRET",
-      "SYNC_ONEDRIVE_CLIENT_ID",
-      "SYNC_ONEDRIVE_CLIENT_SECRET"
-    ]
-  },
   "comparison": {
     "mode": "recursive-file-byte-comparison",
     "root": "dist",

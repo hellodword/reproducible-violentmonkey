@@ -124,5 +124,17 @@
           inherit latest update verify;
         }
       );
+
+      checks = forEachSupportedSystem (
+        { pkgs, ... }:
+        {
+          release-env-extraction = pkgs.runCommand "release-env-extraction-tests" { } ''
+            export PYTHONDONTWRITEBYTECODE=1
+            cd ${./.}
+            ${pkgs.python3}/bin/python3 -m unittest discover -s tests -p 'test_*.py'
+            touch "$out"
+          '';
+        }
+      );
     };
 }

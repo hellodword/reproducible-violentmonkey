@@ -11,7 +11,7 @@ import tempfile
 import urllib.request
 import zipfile
 from datetime import datetime, timedelta
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 
 PROJECT = "violentmonkey"
@@ -19,13 +19,6 @@ OWNER = "violentmonkey"
 REPO = "violentmonkey"
 ADDON = "violentmonkey"
 RELEASE_WORKFLOW = ".github/workflows/release.yml"
-BUILD_ENV_KEYS = [
-    "SYNC_DROPBOX_CLIENT_ID",
-    "SYNC_GOOGLE_DESKTOP_ID",
-    "SYNC_GOOGLE_DESKTOP_SECRET",
-    "SYNC_ONEDRIVE_CLIENT_ID",
-    "SYNC_ONEDRIVE_CLIENT_SECRET",
-]
 
 ROOT = Path(os.environ.get("REPRODUCIBLE_VIOLENTMONKEY_ROOT", Path.cwd())).resolve()
 RELEASES_ROOT = ROOT / "releases" / PROJECT
@@ -218,57 +211,17 @@ def prefetch_pnpm_deps(
     raise SystemExit("failed to prefetch pnpm deps hash:\n" + output)
 
 
-def parse_env(path: Path) -> dict[str, str]:
-    values = {}
-    if path.exists():
-        text = path.read_text(encoding="utf-8")
-    else:
-        text = read_tracked_text(path)
-    if text is None:
-        return values
-    for line in text.splitlines():
-        line = line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        key, value = line.split("=", 1)
-        values[key] = value.strip().strip('"')
-    return values
-
-
-def write_env(path: Path, values: dict[str, str]) -> None:
-    lines = [f'{key}="{values.get(key, "")}"\n' for key in BUILD_ENV_KEYS]
-    path.write_text("".join(lines), encoding="utf-8")
-
-
-def update_env_from_bundle(values: dict[str, str], background_js: str) -> dict[str, str]:
-    updated = dict(values)
-    patterns = {
-        "SYNC_GOOGLE_DESKTOP_ID": r"\b\d+-[a-z0-9]+\.apps\.googleusercontent\.com\b",
-        "SYNC_GOOGLE_DESKTOP_SECRET": r"\bGOCSPX-[A-Za-z0-9_-]+\b",
-    }
-    for key, pattern in patterns.items():
-        match = re.search(pattern, background_js)
-        if match:
-            updated[key] = match.group(0)
-
-    auth_idx = background_js.find("auth_onedrive.html")
-    if auth_idx >= 0:
-        window = background_js[max(0, auth_idx - 500):auth_idx + 100]
-        match = re.search(r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b", window)
-        if match:
-            updated["SYNC_ONEDRIVE_CLIENT_ID"] = match.group(0)
-
-    return updated
-
-
-def unpack_unsigned_xpi(xpi_data: bytes, target: Path) -> str:
+def unpack_unsigned_xpi(xpi_data: bytes, target: Path) -> None:
     xpi_path = target / "addon.xpi"
     xpi_path.write_bytes(xpi_data)
     dist = target / "dist"
     with zipfile.ZipFile(xpi_path) as archive:
+        for member in archive.infolist():
+            member_path = PurePosixPath(member.filename)
+            if member_path.is_absolute() or ".." in member_path.parts or "\\" in member.filename:
+                raise SystemExit("unsafe path in published AMO archive")
         archive.extractall(dist)
     shutil.rmtree(dist / "META-INF", ignore_errors=True)
-    return (dist / "background" / "index.js").read_text(encoding="utf-8")
 
 
 def load_release(version: str) -> dict:
@@ -293,11 +246,6 @@ def load_release(version: str) -> dict:
             "pnpmDepsSha256": None,
             "fetcherVersion": 4,
             "sharpPolicy": "use-upstream-prebuilt-img-packages",
-        },
-        "buildEnv": {
-            "file": "build.env",
-            "provenance": "build-env.provenance.json",
-            "requiredKeys": BUILD_ENV_KEYS,
         },
         "comparison": {
             "mode": "recursive-file-byte-comparison",
@@ -358,28 +306,11 @@ def main() -> None:
 
     with tempfile.TemporaryDirectory(prefix="violentmonkey-update-") as tmp:
         tmp_path = Path(tmp)
-        background_js = unpack_unsigned_xpi(xpi_data, tmp_path)
+        unpack_unsigned_xpi(xpi_data, tmp_path)
         unsigned_tree_hash = hash_path(tmp_path / "dist")
 
-    env_path = release_dir / "build.env"
-    env_values = update_env_from_bundle(parse_env(env_path), background_js)
-    write_env(env_path, env_values)
-
-    provenance = release_dir / "build-env.provenance.json"
-    if not provenance.exists():
-        tracked_provenance = read_tracked_text(provenance)
-        if tracked_provenance is not None:
-            provenance.write_text(tracked_provenance, encoding="utf-8")
-        else:
-            write_json(provenance, {
-                "source": "published AMO and GitHub release bundle",
-                "sourceFormat": "published background/index.js literals",
-                "reason": "Violentmonkey release workflow injects SYNC_* values into the build environment, and writes them to .env only for the release source zip.",
-                "publicness": "These values are treated as public release inputs because they are recoverable from the published extension.",
-                "requiredKeys": BUILD_ENV_KEYS,
-            })
-
     data = load_release(version)
+    data.pop("buildEnv", None)
     data["project"] = PROJECT
     data["version"] = version
     data["amo"].update({
@@ -440,12 +371,6 @@ def main() -> None:
             source_hash=source_hash,
             version=version,
         )
-
-    data["buildEnv"] = {
-        "file": "build.env",
-        "provenance": "build-env.provenance.json",
-        "requiredKeys": BUILD_ENV_KEYS,
-    }
 
     write_json(release_dir / "release.json", data)
     print(f"updated {PROJECT} {version}")
