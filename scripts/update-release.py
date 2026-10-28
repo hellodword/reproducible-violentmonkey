@@ -144,14 +144,15 @@ def package_json_for_rev(rev: str) -> dict:
     return json.loads(fetch_bytes(url).decode("utf-8"))
 
 
-def pnpm_info(package_manager: str) -> tuple[str, str]:
+def pnpm_info(package_manager: str) -> tuple[str, str, str]:
     match = re.match(r"pnpm@([^+]+)", package_manager)
     if not match:
         raise SystemExit(f"unsupported packageManager: {package_manager}")
     version = match.group(1)
-    meta = fetch_json(f"https://registry.npmjs.org/pnpm/{version}")
+    package = "pnpm" if int(version.split(".")[0]) < 12 else "@pnpm/exe.linux-x64"
+    meta = fetch_json(f"https://registry.npmjs.org/{package}/{version}")
     tarball = meta["dist"]["tarball"]
-    return version, prefetch_hash(tarball)
+    return version, package, prefetch_hash(tarball)
 
 
 def prefetch_pnpm_deps(
@@ -302,7 +303,7 @@ def main() -> None:
             f"unsupported pre-pnpm release {version}: package.json has no packageManager; "
             "only pnpm releases are supported"
         )
-    pnpm_version, pnpm_hash = pnpm_info(declared_package_manager)
+    pnpm_version, pnpm_package, pnpm_hash = pnpm_info(declared_package_manager)
 
     with tempfile.TemporaryDirectory(prefix="violentmonkey-update-") as tmp:
         tmp_path = Path(tmp)
@@ -353,8 +354,9 @@ def main() -> None:
     package_manager.update({
         "name": "pnpm",
         "declared": declared_package_manager,
-        "nixPackage": "pnpm_10 override",
+        "nixPackage": "nix/packages/pnpm.nix",
         "nixVersion": pnpm_version,
+        "npmPackage": pnpm_package,
         "tarballSha256": pnpm_hash,
     })
 

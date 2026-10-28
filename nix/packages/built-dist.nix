@@ -1,10 +1,9 @@
 {
   amoDist,
+  callPackage,
   diffutils,
-  fetchPnpmDeps,
   lib,
   nodejs_24,
-  pnpm_10,
   pnpmConfigHook,
   python3,
   release,
@@ -13,8 +12,9 @@
 }:
 
 let
+  fetchPnpmDeps = callPackage ../fetch-pnpm-deps.nix { };
   nodejs = nodejs_24;
-  pnpm = pnpm_10.override {
+  pnpm = callPackage ./pnpm.nix {
     version = release.toolchain.packageManager.nixVersion;
     hash = release.toolchain.packageManager.tarballSha256;
   };
@@ -25,11 +25,7 @@ stdenv.mkDerivation (finalAttrs: {
 
   src = upstreamSrc;
 
-  pnpmInstallFlags = [
-    "--frozen-lockfile"
-    "--offline"
-    "--package-import-method=copy"
-  ];
+  pnpmInstallFlags = [ "--package-import-method=copy" ];
 
   pnpmDeps = fetchPnpmDeps {
     inherit (finalAttrs)

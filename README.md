@@ -15,6 +15,10 @@ The reproducible build requires some `SYNC_*` environment variables. They are no
 
 https://github.com/violentmonkey/violentmonkey/blob/v2.46.0/.github/workflows/release.yml#L36-L63
 
+Dependency prefetching and verification use the pnpm version declared by upstream.
+Release metadata records the npm package and its tarball hash: `pnpm` for versions
+before 12, and `@pnpm/exe.linux-x64` for native releases on `x86_64-linux`.
+
 ## how-to
 
 1. [Install Nix](https://nixos.org/download/)

@@ -11,7 +11,8 @@
 
 let
   pkgs = import nixpkgsPath { inherit system; };
-  pnpm = pkgs.pnpm_10.override {
+  fetchPnpmDeps = pkgs.callPackage ./fetch-pnpm-deps.nix { };
+  pnpm = pkgs.callPackage ./packages/pnpm.nix {
     version = pnpmVersion;
     hash = pnpmSha256;
   };
@@ -22,7 +23,7 @@ let
     hash = sourceSha256;
   };
 in
-pkgs.fetchPnpmDeps {
+fetchPnpmDeps {
   pname = "violentmonkey-built-dist";
   inherit
     fetcherVersion
