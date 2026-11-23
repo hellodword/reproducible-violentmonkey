@@ -1,104 +1,106 @@
-name: Check updates
+name: Verify and Update
 
 on:
   push:
     branches:
-      - 'master'
+      - master
   workflow_dispatch:
   schedule:
     - cron: "30 0,12 * * *"
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 jobs:
-  update:
+  test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
         with:
-          ref: 'master'
+          python-version: "3.13"
+
+      - name: Run unit tests
+        run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -v
+
+  update:
+    needs: test
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: release-update
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: master
           fetch-depth: 0
 
-      - name: Install Nix with official installer
-        shell: bash
-        run: |
-          set -euxo pipefail
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
 
-          sudo apt-get update
-          sudo apt-get install -y xz-utils
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
 
-          curl -L https://nixos.org/nix/install | sh -s -- --daemon
-
-          echo "/nix/var/nix/profiles/default/bin" >> "$GITHUB_PATH"
-          echo "NIX_REMOTE=daemon" >> "$GITHUB_ENV"
-
-          . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
-
-          nix --version
-
-      - name: Configure Nix
-        shell: bash
-        env:
-          GITHUB_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euxo pipefail
-
-          sudo sed -i \
-            -e '/^experimental-features[[:space:]]*=/d' \
-            -e '/^max-jobs[[:space:]]*=/d' \
-            -e '/^trusted-users[[:space:]]*=/d' \
-            -e '/^access-tokens[[:space:]]*=/d' \
-            /etc/nix/nix.conf
-
-          printf '%s\n' \
-            "experimental-features = nix-command flakes" \
-            "max-jobs = auto" \
-            "trusted-users = root ${USER}" \
-            "access-tokens = github.com=$GITHUB_ACCESS_TOKEN" \
-            | sudo tee -a /etc/nix/nix.conf
-
-          sudo systemctl restart nix-daemon
-
-          nix config show experimental-features
-          nix config show substituters
-
-      - name: fetch
+      - name: Verify and record latest AMO release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
 
-          version_ori="$(find releases/violentmonkey -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort -V | tail -n1)"
-          if [ -z "$version_ori" ]; then
-            echo "failed to detect recorded version" >&2
-            exit 1
+          version_recorded="$(python3 - <<'PY'
+          import json
+          import re
+          from pathlib import Path
+
+          records = [
+              json.loads(p.read_text(encoding="utf-8"))
+              for p in Path("releases").glob("*.json")
+          ]
+          if not records:
+              raise SystemExit("no recorded releases found in releases/")
+          latest = max(
+              records,
+              key=lambda r: [int(part) for part in re.findall(r"\d+", r["version"])],
+          )
+          print(latest["version"])
+          PY
+          )"
+
+          version_latest="$(python3 -m repro latest)"
+
+          {
+            echo "- Recorded version: \`${version_recorded}\`"
+            echo "- Latest AMO version: \`${version_latest}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$version_latest" = "$version_recorded" ] || [ -f "releases/${version_latest}.json" ]; then
+            echo "Already up to date (${version_recorded})."
+            exit 0
           fi
 
-          version_new="$(nix run .#latest | tail -n1)"
-          if [ -z "$version_new" ]; then
-            echo "failed to detect latest version" >&2
-            exit 1
-          fi
+          python3 -m repro verify "$version_latest" --write
 
-          echo "recorded version: $version_ori" >> "$GITHUB_STEP_SUMMARY"
-          echo "latest version: $version_new" >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo ""
+            echo '```json'
+            cat "releases/${version_latest}.json"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
-          nix run .#update -- "$version_new"
-          nix run .#verify -- "$version_new"
-
-          if [ "$version_new" != "$version_ori" ]; then
-            echo '```json' >> "$GITHUB_STEP_SUMMARY"
-            cat "releases/violentmonkey/$version_new/release.json" >> "$GITHUB_STEP_SUMMARY"
-            echo '```' >> "$GITHUB_STEP_SUMMARY"
-
-            git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git config --local user.name "github-actions[bot]"
-            git add "releases/violentmonkey/$version_new"
-            git commit -m "chore: [bot] $version_ori -> $version_new"
-            git checkout -b "automated/${version_ori}_to_${version_new}"
-            git push -f origin "automated/${version_ori}_to_${version_new}"
-            PR_URL="$(gh pr create --fill)"
-            gh pr merge "$PR_URL" --delete-branch --rebase
-          fi
+          branch="automated/${version_recorded}_to_${version_latest}"
+          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git checkout -B "$branch"
+          git add -- "releases/${version_latest}.json"
+          git commit -m "chore: [bot] ${version_recorded} -> ${version_latest}"
+          git push -f origin "$branch"
+          pr_url="$(gh pr create --base master --head "$branch" --fill)"
+          gh pr merge "$pr_url" --delete-branch --rebase

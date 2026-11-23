@@ -1,140 +1,43 @@
 {
-  description = "reproducible-violentmonkey";
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+  description = "Verified Violentmonkey AMO release metadata";
 
-  outputs = { nixpkgs, ... }:
+  outputs = { self }:
     let
-      latestRelease = builtins.fromJSON (builtins.readFile ./releases/violentmonkey/2.41.0/release.json);
+      entries = builtins.readDir ./releases;
+      jsonFiles = builtins.filter (
+        name: entries.${name} == "regular" && builtins.match ".*\\.json" name != null
+      ) (builtins.attrNames entries);
+      readRelease =
+        file: builtins.fromJSON (builtins.readFile (./releases + "/${file}"));
+      releasesList = map readRelease jsonFiles;
+      releases = builtins.listToAttrs (
+        map (r: {
+          name = r.version;
+          value = r;
+        }) releasesList
+      );
+      sortedVersions = builtins.sort (
+        a: b: builtins.compareVersions a b < 0
+      ) (builtins.attrNames releases);
+      latestVersion =
+        if sortedVersions == [ ] then
+          throw "no verified Violentmonkey releases found in ./releases"
+        else
+          builtins.elemAt sortedVersions (builtins.length sortedVersions - 1);
+      latestRelease = releases.${latestVersion};
       violentmonkeyXpi = {
         inherit (latestRelease) version;
-        url = latestRelease.amo.fileUrl;
-        sha256 = latestRelease.amo.xpiSha256;
+        url = latestRelease.amo.url;
+        sha256 = latestRelease.amo.sha256;
       };
-      supportedSystems = [ "x86_64-linux" ];
-      forEachSupportedSystem =
-        f:
-        nixpkgs.lib.genAttrs supportedSystems (
-          system:
-          f {
-            inherit system;
-            pkgs = import nixpkgs { inherit system; };
-          }
-        );
     in
     {
       lib = {
-        inherit violentmonkeyXpi;
+        inherit latestVersion releases violentmonkeyXpi;
         violentmonkeyBuildFirefoxXpiAddonArgs = violentmonkeyXpi // {
           pname = "violentmonkey";
           addonId = "{aecec67f-0d10-4fa7-b7c7-609a2db280cf}";
         };
       };
-
-      apps = forEachSupportedSystem (
-        { pkgs, system }:
-        let
-          repoRoot = ''
-            repo_root="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
-          '';
-          updateEnv = ''
-            export REPRODUCIBLE_VIOLENTMONKEY_ROOT="$repo_root"
-            export REPRODUCIBLE_VIOLENTMONKEY_NIXPKGS="${nixpkgs.outPath}"
-          '';
-          latest =
-            let
-              program = pkgs.writeShellApplication {
-                name = "violentmonkey-latest";
-                runtimeInputs = with pkgs; [
-                  git
-                  python3
-                ];
-                text = ''
-                  ${repoRoot}
-                  ${updateEnv}
-                  python3 ${./scripts/update-release.py} --print-latest-version
-                '';
-              };
-            in
-            {
-              type = "app";
-              program = "${nixpkgs.lib.getExe program}";
-              meta.description = "Print the latest Violentmonkey version on AMO.";
-            };
-          update =
-            let
-              program = pkgs.writeShellApplication {
-                name = "violentmonkey-update";
-                runtimeInputs = with pkgs; [
-                  git
-                  nix
-                  python3
-                ];
-                text = ''
-                  if [ "$#" -ne 1 ]; then
-                    echo "usage: nix run .#update -- <version>" >&2
-                    exit 2
-                  fi
-
-                  ${repoRoot}
-                  ${updateEnv}
-                  python3 ${./scripts/update-release.py} "$1"
-                '';
-              };
-            in
-            {
-              type = "app";
-              program = "${nixpkgs.lib.getExe program}";
-              meta.description = "Update recorded Violentmonkey release metadata for an explicit version.";
-            };
-          verify =
-            let
-              program = pkgs.writeShellApplication {
-                name = "violentmonkey-verify";
-                runtimeInputs = with pkgs; [
-                  git
-                  nix
-                ];
-                text = ''
-                  if [ "$#" -ne 1 ]; then
-                    echo "usage: nix run .#verify -- <version>" >&2
-                    exit 2
-                  fi
-                  if [ "$1" = latest ]; then
-                    echo "verify requires an explicit version; use nix run .#latest to inspect the latest version" >&2
-                    exit 2
-                  fi
-
-                  ${repoRoot}
-                  nix-build --no-out-link ${./.}/nix/verify-release.nix \
-                    --argstr root "$repo_root" \
-                    --argstr version "$1" \
-                    --argstr system "${system}" \
-                    --arg nixpkgsPath ${nixpkgs.outPath}
-                '';
-              };
-            in
-            {
-              type = "app";
-              program = "${nixpkgs.lib.getExe program}";
-              meta.description = "Verify a recorded Violentmonkey release against the AMO artifact.";
-            };
-        in
-        {
-          default = latest;
-          inherit latest update verify;
-        }
-      );
-
-      checks = forEachSupportedSystem (
-        { pkgs, ... }:
-        {
-          release-env-extraction = pkgs.runCommand "release-env-extraction-tests" { } ''
-            export PYTHONDONTWRITEBYTECODE=1
-            cd ${./.}
-            ${pkgs.python3}/bin/python3 -m unittest discover -s tests -p 'test_*.py'
-            touch "$out"
-          '';
-        }
-      );
     };
 }

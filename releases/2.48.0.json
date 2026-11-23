@@ -1,0 +1,16 @@
+{
+  "version": "2.48.0",
+  "amo": {
+    "url": "https://addons.mozilla.org/firefox/downloads/file/4963965/violentmonkey-2.48.0.xpi",
+    "sha256": "sha256-5z4xA2l8vu4zNQIMMcfjxYeUaSl0DNePm/8bUL9ivjQ="
+  },
+  "source": {
+    "repository": "violentmonkey/violentmonkey",
+    "tag": "v2.48.0",
+    "commit": "db8c4c01603fd24fd9e11a80e1a81b933dd1e4aa"
+  },
+  "toolchain": {
+    "node": "26.13.1",
+    "packageManager": "pnpm@11.20.0"
+  }
+}
